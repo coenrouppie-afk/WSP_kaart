@@ -1,71 +1,104 @@
-// Nederland centrum
+// ============================
+// 1. KAART INITIALISEREN
+// ============================
+
+// Nederland + baselayer
 var map = L.map('map', {
-  center: [52.1326, 5.2913], // Nederland
+  center: [52.1326, 5.2913],
   zoom: 7,
-  layers: [osm] // standaard baselayer
+  layers: [osm]
 });
 
 
-// -----------------------
-// 🔁 LAGEN
-// -----------------------
+// ============================
+// 2. LAGEN DEFINIËREN
+// ============================
 
 var overlayLayers = {};
 
+// BAG layer (LEEG starten!)
+var bagPandLayer = L.layerGroup();
+overlayLayers["BAG Panden (PDOK)"] = bagPandLayer;
 
-// -----------------------
-// 📦 PDOK BAG API (voorbeeld)
-// -----------------------
 
-// Voorbeeld: panden ophalen via PDOK locatie server
-var bagLayer = L.layerGroup();
+// ============================
+// 3. BAG FUNCTIE (ZEER BELANGRIJK)
+// ============================
 
-fetch("https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?wt=json&q=Utrecht")
-  .then(res => res.json())
-  .then(data => {
+function loadBagPanden() {
 
-    var docs = data.response.docs;
+  // ✅ STOP als te ver uitgezoomd (anders crash je browser)
+  if (map.getZoom() < 15) {
+    bagPandLayer.clearLayers();
+    return;
+  }
 
-    docs.forEach(doc => {
-      if (!doc.centroide_ll) return;
+  var bounds = map.getBounds();
 
-      // PDOK geeft coords als string: "lat lon"
-      var coords = doc.centroide_ll.replace("POINT(", "").replace(")", "").split(" ");
-      var lon = parseFloat(coords[0]);
-      var lat = parseFloat(coords[1]);
+  var bbox =
+    bounds.getWest() + "," +
+    bounds.getSouth() + "," +
+    bounds.getEast() + "," +
+    bounds.getNorth();
 
-      var marker = L.marker([lat, lon])
-        .bindPopup(`
-          <b>${doc.weergavenaam}</b><br>
-          Type: ${doc.type}
-        `);
+  var url = "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
+    "service=WFS&version=2.0.0&request=GetFeature" +
+    "&typeName=bag:pand" +
+    "&outputFormat=application/json" +
+    "&srsName=EPSG:4326" +
+    "&bbox=" + bbox + ",EPSG:4326";
 
-      bagLayer.addLayer(marker);
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+
+      // oude data verwijderen
+      bagPandLayer.clearLayers();
+
+      var geojson = L.geoJSON(data, {
+        style: function(feature) {
+          return {
+            color: "#ff7800",
+            weight: 1,
+            fillOpacity: 0.2
+          };
+        },
+
+        onEachFeature: function(feature, layer) {
+          layer.bindPopup(`
+            <b>Pand ID:</b> ${feature.properties.identificatie}<br>
+            Status: ${feature.properties.status}
+          `);
+        }
+
+      });
+
+      bagPandLayer.addLayer(geojson);
+
     });
-
-  });
-
-overlayLayers["BAG (PDOK voorbeeld)"] = bagLayer;
+}
 
 
-// -----------------------
-// 📍 EXTRA VOORBEELD LAAG
-// -----------------------
+// ============================
+// 4. EVENTS (WANNEER LADEN)
+// ============================
 
-var voorbeeldLayer = L.layerGroup();
-
-var marker1 = L.marker([52.1, 5.1]).bindPopup("Voorbeeld 1");
-var marker2 = L.marker([51.9, 4.5]).bindPopup("Voorbeeld 2");
-
-voorbeeldLayer.addLayer(marker1);
-voorbeeldLayer.addLayer(marker2);
-
-overlayLayers["Voorbeeld laag"] = voorbeeldLayer;
+// 🔁 elke keer als je beweegt
+map.on("moveend", function () {
+  loadBagPanden();
+});
 
 
-// -----------------------
-// 🎛️ LAYER CONTROL
-// -----------------------
+// ============================
+// 5. EERSTE LOAD (INIT)
+// ============================
+
+loadBagPanden();
+
+
+// ============================
+// 6. LAYER CONTROL (LAATSTE)
+// ============================
 
 L.control.layers(
   {
@@ -76,4 +109,3 @@ L.control.layers(
     collapsed: false
   }
 ).addTo(map);
-
