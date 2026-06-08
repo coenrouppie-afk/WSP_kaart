@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mijn Kaart</title>
+  <title>Nederland Kaart</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -16,26 +16,16 @@
 </head>
 
 <body>
-
 <div id="map"></div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<script>
-  // Maak kaart
-  var map = L.map('map').setView([52.0907, 5.1214], 13); // Utrecht
+<!-- Baselayer -->
+<script src="baselayers/osm.js"></script>
 
-  // Voeg kaartlaag toe
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  // Voeg marker toe
-  L.marker([52.0907, 5.1214]).addTo(map)
-    .bindPopup('Hallo Utrecht!')
-    .openPopup();
-</script>
+<!-- App logic -->
+<script src="app.js"></script>
 
 </body>
 </html>
