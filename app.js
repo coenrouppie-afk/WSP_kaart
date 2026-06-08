@@ -27,7 +27,7 @@ overlayLayers["BAG Panden (PDOK)"] = bagPandLayer;
 function loadBagPanden() {
 
   // ✅ Alleen laden als je goed ingezoomd bent
-  if (map.getZoom() < 16) {
+  if (map.getZoom() < 10) {
     bagPandLayer.clearLayers();
     console.log("Te ver uitgezoomd");
     return;
