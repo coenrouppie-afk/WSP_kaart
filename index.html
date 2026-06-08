@@ -1,33 +1,40 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
-<title>Mijn Kaart</title>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mijn Kaart</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-<style>
- #map { height: 100vh; }
-</style>
+  <style>
+    #map {
+      height: 100vh;
+    }
+  </style>
 </head>
+
 <body>
 
 <div id="map"></div>
 
-.4/dist/leaflet.js"></script>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-var map = L.map('map').setView([52.0907, 5.1214], 13); // Utrecht
+  // Maak kaart
+  var map = L.map('map').setView([52.0907, 5.1214], 13); // Utrecht
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+  // Voeg kaartlaag toe
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-L.marker([52.0907, 5.1214]).addTo(map)
- .bindPopup('Hallo Utrecht!')
- .openPopup();
+  // Voeg marker toe
+  L.marker([52.0907, 5.1214]).addTo(map)
+    .bindPopup('Hallo Utrecht!')
+    .openPopup();
 </script>
 
 </body>
