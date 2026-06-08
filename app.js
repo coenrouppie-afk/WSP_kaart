@@ -26,7 +26,7 @@ overlayLayers["BAG Panden (PDOK)"] = bagPandLayer;
 
 function loadBagPanden() {
 
-  if (map.getZoom() < 15) {
+  if (map.getZoom() < 50) {
     bagPandLayer.clearLayers();
     return;
   }
