@@ -15,19 +15,21 @@ var map = L.map("map", {
 
 var overlayLayers = {};
 
-// BAG laag
-var bagPandLayer = L.layerGroup();
+// BAG layer
+var bagPandLayer = L.layerGroup().addTo(map); // ✅ direct zichtbaar
 overlayLayers["BAG Panden (PDOK)"] = bagPandLayer;
 
 
 // ============================
-// 3. BAG DATA LADEN (WFS)
+// 3. BAG DATA LADEN (FIXED)
 // ============================
 
 function loadBagPanden() {
 
-  if (map.getZoom() < 50) {
+  // ✅ Alleen laden als je goed ingezoomd bent
+  if (map.getZoom() < 16) {
     bagPandLayer.clearLayers();
+    console.log("Te ver uitgezoomd");
     return;
   }
 
@@ -39,40 +41,50 @@ function loadBagPanden() {
     bounds.getEast() + "," +
     bounds.getNorth();
 
+  console.log("BBOX:", bbox);
+
   var url =
     "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
     "service=WFS&version=2.0.0&request=GetFeature" +
-    "&typeName=bag:pand" +
+    "&typeNames=bag:pand" +   // ✅ BELANGRIJK
     "&outputFormat=application/json" +
     "&srsName=EPSG:4326" +
+    "&count=1000" +           // ✅ voorkomt lege responses
     "&bbox=" + bbox + ",EPSG:4326";
+
+  console.log("WFS URL:", url);
 
   fetch(url)
     .then(res => res.json())
     .then(data => {
+
+      console.log("Aantal features:", data.features.length);
+
       bagPandLayer.clearLayers();
 
+      if (data.features.length === 0) {
+        console.log("Geen data → probeer verder inzoomen");
+        return;
+      }
+
       var geojson = L.geoJSON(data, {
-
-        style: function () {
-          return {
-            color: "#ff7800",
-            weight: 1,
-            fillOpacity: 0.2
-          };
+        style: {
+          color: "red",
+          weight: 1,
+          fillOpacity: 0.3
         },
-
         onEachFeature: function (feature, layer) {
           layer.bindPopup(
             "<b>Pand ID:</b> " + feature.properties.identificatie +
             "<br>Status: " + feature.properties.status
           );
         }
-
       });
 
       bagPandLayer.addLayer(geojson);
-    });
+
+    })
+    .catch(err => console.error("Fout:", err));
 }
 
 
@@ -84,12 +96,42 @@ map.on("moveend", function () {
   loadBagPanden();
 });
 
-// eerste keer laden
-loadBagPanden();
+
+// ============================
+// 5. TEST LOAD (UTRECHT fallback)
+// ============================
+
+function testLoad() {
+
+  var url =
+    "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
+    "service=WFS&version=2.0.0&request=GetFeature" +
+    "&typeNames=bag:pand" +
+    "&outputFormat=application/json" +
+    "&srsName=EPSG:4326" +
+    "&count=1000" +
+    "&bbox=5.12,52.09,5.13,52.10,EPSG:4326";
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+
+      console.log("TEST features:", data.features.length);
+
+      var geojson = L.geoJSON(data, {
+        style: { color: "blue" }
+      });
+
+      bagPandLayer.addLayer(geojson);
+    });
+}
+
+// 🔥 gebruik tijdelijk om te testen
+testLoad();
 
 
 // ============================
-// 5. DRAW TOOL (BBOX)
+// 6. DRAW TOOL (BBOX)
 // ============================
 
 var drawnItems = new L.FeatureGroup();
@@ -113,7 +155,7 @@ map.addControl(drawControl);
 
 
 // ============================
-// 6. BBOX EVENT
+// 7. EXPORT VIA BBOX
 // ============================
 
 map.on(L.Draw.Event.CREATED, function (event) {
@@ -125,16 +167,12 @@ map.on(L.Draw.Event.CREATED, function (event) {
 
   var bounds = layer.getBounds();
 
-  exportBagFromBBox(bounds);
+  exportBag(bounds);
 
 });
 
 
-// ============================
-// 7. EXPORT VIA PDOK WFS
-// ============================
-
-function exportBagFromBBox(bounds) {
+function exportBag(bounds) {
 
   var bbox =
     bounds.getWest() + "," +
@@ -145,9 +183,10 @@ function exportBagFromBBox(bounds) {
   var url =
     "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
     "service=WFS&version=2.0.0&request=GetFeature" +
-    "&typeName=bag:pand" +
+    "&typeNames=bag:pand" +
     "&outputFormat=application/json" +
     "&srsName=EPSG:4326" +
+    "&count=1000" +
     "&bbox=" + bbox + ",EPSG:4326";
 
   fetch(url)
