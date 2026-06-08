@@ -2,8 +2,7 @@
 // 1. KAART INITIALISEREN
 // ============================
 
-// Nederland + baselayer
-var map = L.map('map', {
+var map = L.map("map", {
   center: [52.1326, 5.2913],
   zoom: 7,
   layers: [osm]
@@ -16,18 +15,17 @@ var map = L.map('map', {
 
 var overlayLayers = {};
 
-// BAG layer (LEEG starten!)
+// BAG laag
 var bagPandLayer = L.layerGroup();
 overlayLayers["BAG Panden (PDOK)"] = bagPandLayer;
 
 
 // ============================
-// 3. BAG FUNCTIE (ZEER BELANGRIJK)
+// 3. BAG DATA LADEN (WFS)
 // ============================
 
 function loadBagPanden() {
 
-  // ✅ STOP als te ver uitgezoomd (anders crash je browser)
   if (map.getZoom() < 15) {
     bagPandLayer.clearLayers();
     return;
@@ -41,7 +39,8 @@ function loadBagPanden() {
     bounds.getEast() + "," +
     bounds.getNorth();
 
-  var url = "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
+  var url =
+    "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
     "service=WFS&version=2.0.0&request=GetFeature" +
     "&typeName=bag:pand" +
     "&outputFormat=application/json" +
@@ -51,12 +50,11 @@ function loadBagPanden() {
   fetch(url)
     .then(res => res.json())
     .then(data => {
-
-      // oude data verwijderen
       bagPandLayer.clearLayers();
 
       var geojson = L.geoJSON(data, {
-        style: function(feature) {
+
+        style: function () {
           return {
             color: "#ff7800",
             weight: 1,
@@ -64,40 +62,125 @@ function loadBagPanden() {
           };
         },
 
-        onEachFeature: function(feature, layer) {
-          layer.bindPopup(`
-            <b>Pand ID:</b> ${feature.properties.identificatie}<br>
-            Status: ${feature.properties.status}
-          `);
+        onEachFeature: function (feature, layer) {
+          layer.bindPopup(
+            "<b>Pand ID:</b> " + feature.properties.identificatie +
+            "<br>Status: " + feature.properties.status
+          );
         }
 
       });
 
       bagPandLayer.addLayer(geojson);
-
     });
 }
 
 
 // ============================
-// 4. EVENTS (WANNEER LADEN)
+// 4. EVENTS (KAART)
 // ============================
 
-// 🔁 elke keer als je beweegt
 map.on("moveend", function () {
   loadBagPanden();
 });
 
-
-// ============================
-// 5. EERSTE LOAD (INIT)
-// ============================
-
+// eerste keer laden
 loadBagPanden();
 
 
 // ============================
-// 6. LAYER CONTROL (LAATSTE)
+// 5. DRAW TOOL (BBOX)
+// ============================
+
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+var drawControl = new L.Control.Draw({
+  draw: {
+    polygon: false,
+    polyline: false,
+    circle: false,
+    marker: false,
+    circlemarker: false,
+    rectangle: true
+  },
+  edit: {
+    featureGroup: drawnItems
+  }
+});
+
+map.addControl(drawControl);
+
+
+// ============================
+// 6. BBOX EVENT
+// ============================
+
+map.on(L.Draw.Event.CREATED, function (event) {
+
+  var layer = event.layer;
+
+  drawnItems.clearLayers();
+  drawnItems.addLayer(layer);
+
+  var bounds = layer.getBounds();
+
+  exportBagFromBBox(bounds);
+
+});
+
+
+// ============================
+// 7. EXPORT VIA PDOK WFS
+// ============================
+
+function exportBagFromBBox(bounds) {
+
+  var bbox =
+    bounds.getWest() + "," +
+    bounds.getSouth() + "," +
+    bounds.getEast() + "," +
+    bounds.getNorth();
+
+  var url =
+    "https://service.pdok.nl/lv/bag/wfs/v2_0?" +
+    "service=WFS&version=2.0.0&request=GetFeature" +
+    "&typeName=bag:pand" +
+    "&outputFormat=application/json" +
+    "&srsName=EPSG:4326" +
+    "&bbox=" + bbox + ",EPSG:4326";
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      downloadGeoJSON(data);
+    });
+}
+
+
+// ============================
+// 8. DOWNLOAD FUNCTIE
+// ============================
+
+function downloadGeoJSON(data) {
+
+  var blob = new Blob([JSON.stringify(data)], {
+    type: "application/json"
+  });
+
+  var url = URL.createObjectURL(blob);
+
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "bag_export.geojson";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+
+// ============================
+// 9. LAYER CONTROL
 // ============================
 
 L.control.layers(
